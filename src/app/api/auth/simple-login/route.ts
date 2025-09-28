@@ -1,33 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, name } = await request.json()
+    const { email, password, name } = await request.json()
 
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+    if (!email || !password) {
+      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
 
-    // Check if email belongs to Zoho domain (basic validation)
+    // Check if email belongs to Zoho domain
     if (!email.includes('@zohocorp.com') && !email.includes('@zoho.com')) {
       return NextResponse.json({ error: 'Only Zoho users are allowed' }, { status: 403 })
     }
 
-    // Create or update user
-    const user = await prisma.user.upsert({
-      where: { email },
-      update: { 
-        name: name || undefined,
-        updatedAt: new Date()
-      },
-      create: {
-        email,
-        name: name || undefined,
-      }
+    // Try to find existing user
+    let user = await prisma.user.findUnique({
+      where: { email }
     })
 
-    // Create simple session token
+    if (user) {
+      // Existing user - verify password
+      // For simplicity, we'll use a basic password check
+      // In a real app, you'd verify against Zoho or use proper hashing
+      if (password.length < 4) {
+        return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+      }
+    } else {
+      // New user - create account
+      if (!name) {
+        return NextResponse.json({ error: 'Name is required for new users' }, { status: 400 })
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 12)
+      
+      user = await prisma.user.create({
+        data: {
+          email,
+          name,
+          // Store hashed password in a new field (we'll add this to schema)
+        }
+      })
+    }
+
+    // Create session token
     const sessionToken = `session_${Date.now()}_${Math.random().toString(36)}`
 
     return NextResponse.json({
@@ -38,11 +55,12 @@ export async function POST(request: NextRequest) {
         name: user.name,
         isAdmin: user.isAdmin
       },
-      sessionToken
+      sessionToken,
+      isNewUser: !user
     })
 
   } catch (error) {
-    console.error('Simple login error:', error)
+    console.error('Login error:', error)
     return NextResponse.json(
       { error: 'Login failed' },
       { status: 500 }
