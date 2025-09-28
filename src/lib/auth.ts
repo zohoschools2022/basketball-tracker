@@ -9,24 +9,17 @@ export const authOptions: NextAuthOptions = {
       id: "zoho",
       name: "Zoho",
       type: "oauth",
-      authorization: {
-        url: "https://accounts.zoho.com/oauth/v2/auth",
-        params: {
-          scope: "AaaServer.profile.READ",
-          access_type: "offline",
-          prompt: "consent",
-        },
-      },
+      authorization: "https://accounts.zoho.com/oauth/v2/auth?scope=AaaServer.profile.READ&response_type=code",
       token: "https://accounts.zoho.com/oauth/v2/token",
       userinfo: "https://accounts.zoho.com/oauth/v2/user/info",
-      clientId: process.env.ZOHO_CLIENT_ID,
-      clientSecret: process.env.ZOHO_CLIENT_SECRET,
-      profile(profile) {
+      clientId: process.env.ZOHO_CLIENT_ID as string,
+      clientSecret: process.env.ZOHO_CLIENT_SECRET as string,
+      profile(profile: any) {
         return {
-          id: profile.ZUID,
-          name: profile.Display_Name || profile.First_Name + " " + profile.Last_Name,
-          email: profile.Email,
-          image: profile.profile_image_url,
+          id: profile.ZUID || profile.zuid,
+          name: profile.Display_Name || profile.display_name || `${profile.First_Name || profile.first_name} ${profile.Last_Name || profile.last_name}`,
+          email: profile.Email || profile.email,
+          image: profile.profile_image_url || null,
         }
       },
     },
