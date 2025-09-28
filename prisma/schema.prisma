@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// NextAuth.js required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  isAdmin       Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+  bookings Booking[]
+  gameScores GameScore[]
+  penalties Penalty[]
+  playerOfDayWins PlayerOfDay[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Basketball Court Booking System
+model Court {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  timeSlots   TimeSlot[]
+  bookings    Booking[]
+}
+
+model TimeSlot {
+  id        String @id @default(cuid())
+  courtId   String
+  startTime String // Format: "HH:MM" (e.g., "06:00")
+  endTime   String // Format: "HH:MM" (e.g., "08:00")
+  isActive  Boolean @default(true)
+
+  court     Court     @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  bookings  Booking[]
+}
+
+model Booking {
+  id           String      @id @default(cuid())
+  userId       String
+  courtId      String
+  timeSlotId   String
+  date         DateTime    // The date for which the booking is made
+  status       BookingStatus @default(CONFIRMED)
+  gameType     GameType?   // null if just court usage
+  playerCount  Int?        // Number of players who showed up
+  noShow       Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  user         User        @relation(fields: [userId], references: [id])
+  court        Court       @relation(fields: [courtId], references: [id])
+  timeSlot     TimeSlot    @relation(fields: [timeSlotId], references: [id])
+  games        Game[]
+  playerOfDay  PlayerOfDay?
+
+  @@unique([courtId, timeSlotId, date])
+}
+
+model Game {
+  id         String   @id @default(cuid())
+  bookingId  String
+  gameType   GameType
+  team1Score Int
+  team2Score Int
+  duration   Int?     // Duration in minutes
+  notes      String?
+  videoUrl   String?  // Optional video recording URL
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  booking    Booking     @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  gameScores GameScore[]
+}
+
+model GameScore {
+  id       String @id @default(cuid())
+  gameId   String
+  userId   String
+  points   Int    @default(0)
+  team     Int    // 1 or 2
+  
+  game     Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user     User   @relation(fields: [userId], references: [id])
+
+  @@unique([gameId, userId])
+}
+
+model PlayerOfDay {
+  id        String   @id @default(cuid())
+  bookingId String   @unique
+  userId    String
+  reason    String?  // Why they were chosen as player of the day
+  createdAt DateTime @default(now())
+
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Penalty {
+  id          String        @id @default(cuid())
+  userId      String
+  type        PenaltyType
+  amount      Float         // Monetary penalty amount
+  reason      String
+  isPaid      Boolean       @default(false)
+  bookingId   String?       // Reference to the booking that caused the penalty (if applicable)
+  createdAt   DateTime      @default(now())
+  paidAt      DateTime?
+
+  user        User          @relation(fields: [userId], references: [id])
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Enums
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum GameType {
+  HALF_COURT
+  FULL_COURT
+}
+
+enum PenaltyType {
+  NO_SHOW
+  LATE_CANCELLATION
+  OTHER
+}
