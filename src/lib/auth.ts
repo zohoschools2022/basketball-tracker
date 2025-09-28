@@ -46,45 +46,37 @@ const ZohoProvider = {
 export const authOptions: NextAuthOptions = {
   providers: [ZohoProvider],
   callbacks: {
-    async signIn({ user, account, profile }) {
-      console.log('SignIn callback:', { user, account, profile })
-      return true
+    async signIn({ user }) {
+      // Simple validation - just check if user data exists
+      return !!(user?.email && user?.id)
     },
     async redirect({ url, baseUrl }) {
-      console.log('Redirect callback:', { url, baseUrl })
-      // Redirect to dashboard after successful login
-      if (url.startsWith(baseUrl)) return url
-      if (url.startsWith('/')) return `${baseUrl}${url}`
+      // Always redirect to dashboard after successful login
+      if (url === `${baseUrl}/dashboard`) return url
       return `${baseUrl}/dashboard`
     },
-    async jwt({ token, user, account }) {
-      // Save user info to JWT token
+    async jwt({ token, user }) {
+      // Store user data in JWT token (no database needed)
       if (user) {
         token.id = user.id
         token.email = user.email
         token.name = user.name
       }
-      if (account) {
-        token.accessToken = account.access_token
-      }
       return token
     },
     async session({ session, token }) {
-      // Send properties to the client
-      if (token && session.user) {
-        session.user.id = token.id as string
-        session.user.email = token.email as string
-        session.user.name = token.name as string
-      }
+      // Pass user data from JWT to session
+      session.user.id = token.id as string
+      session.user.email = token.email as string
+      session.user.name = token.name as string
       return session
     },
   },
   pages: {
     signIn: '/auth/signin',
-    error: '/auth/error',
   },
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  debug: process.env.NODE_ENV === 'development',
 }
