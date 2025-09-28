@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 
 export default function SignIn() {
-  const [providers, setProviders] = useState<any>(null)
+  const [providers, setProviders] = useState<Record<string, any> | null>(null)
 
   useEffect(() => {
     const setAuthProviders = async () => {
@@ -34,7 +34,7 @@ export default function SignIn() {
         </CardHeader>
 
         <CardContent className="space-y-6">
-          {providers && Object.values(providers).map((provider: any) => (
+          {providers && Object.values(providers).map((provider: Record<string, any>) => (
             <div key={provider.name}>
               <Button
                 onClick={() => signIn(provider.id, { callbackUrl: '/dashboard' })}

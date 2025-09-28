@@ -38,7 +38,7 @@ export const authOptions: NextAuthOptions = {
       }
       return session
     },
-    async signIn({ user, account, profile }) {
+    async signIn() {
       // You can add custom logic here to restrict access
       // For example, check if user email belongs to your organization
       return true
