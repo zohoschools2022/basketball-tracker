@@ -25,16 +25,22 @@ export const authOptions: NextAuthOptions = {
     },
   ],
   callbacks: {
+    async signIn({ user, account, profile }) {
+      console.log('SignIn callback:', { user, account, profile })
+      return true
+    },
+    async redirect({ url, baseUrl }) {
+      console.log('Redirect callback:', { url, baseUrl })
+      // Redirect to dashboard after successful login
+      if (url.startsWith(baseUrl)) return url
+      if (url.startsWith('/')) return `${baseUrl}${url}`
+      return `${baseUrl}/dashboard`
+    },
     async session({ session, user }) {
-      if (session.user) {
+      if (session.user && user) {
         session.user.id = user.id
       }
       return session
-    },
-    async signIn() {
-      // You can add custom logic here to restrict access
-      // For example, check if user email belongs to your organization
-      return true
     },
   },
   pages: {
@@ -44,4 +50,5 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "database",
   },
+  debug: process.env.NODE_ENV === 'development',
 }
