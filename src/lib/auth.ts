@@ -3,7 +3,8 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { prisma } from "./prisma"
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  // Remove database adapter for now - use JWT sessions instead
+  // adapter: PrismaAdapter(prisma),
   providers: [
     {
       id: "zoho",
@@ -36,9 +37,22 @@ export const authOptions: NextAuthOptions = {
       if (url.startsWith('/')) return `${baseUrl}${url}`
       return `${baseUrl}/dashboard`
     },
-    async session({ session, user }) {
-      if (session.user && user) {
-        session.user.id = user.id
+    async jwt({ token, user, account, profile }) {
+      // Save user info to JWT token
+      if (user) {
+        token.id = user.id
+        token.email = user.email
+      }
+      if (account) {
+        token.accessToken = account.access_token
+      }
+      return token
+    },
+    async session({ session, token }) {
+      // Send properties to the client
+      if (token) {
+        session.user.id = token.id as string
+        session.user.email = token.email as string
       }
       return session
     },
@@ -48,7 +62,7 @@ export const authOptions: NextAuthOptions = {
     error: '/auth/error',
   },
   session: {
-    strategy: "database",
+    strategy: "jwt",
   },
   debug: process.env.NODE_ENV === 'development',
 }
