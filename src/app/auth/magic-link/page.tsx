@@ -1,44 +1,79 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
-export default function SimpleAuth() {
+export default function MagicLink() {
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
+  const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
-  const router = useRouter()
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSendLink = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
 
     try {
-      const response = await fetch('/api/auth/simple-login', {
+      const response = await fetch('/api/auth/send-magic-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name }),
+        body: JSON.stringify({ email }),
       })
 
       const data = await response.json()
 
       if (response.ok) {
-        // Store session in localStorage for simplicity
-        localStorage.setItem('basketball_session', JSON.stringify(data))
-        router.push('/dashboard')
+        setSent(true)
       } else {
-        setError(data.error || 'Login failed')
+        setError(data.error || 'Failed to send magic link')
       }
     } catch (err) {
-      setError('Login failed. Please try again.')
+      setError('Failed to send magic link. Please try again.')
     } finally {
       setLoading(false)
     }
+  }
+
+  if (sent) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center space-y-4">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+              ✉️
+            </div>
+            <div>
+              <CardTitle className="text-2xl font-bold">Check Your Email</CardTitle>
+              <CardDescription className="text-gray-600">
+                We sent a magic link to {email}
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="text-center">
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Click the link in your email to sign in to the basketball court tracker.
+              </p>
+              <p className="text-xs text-gray-500">
+                The link will expire in 15 minutes for security.
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSent(false)
+                  setEmail('')
+                }}
+                className="w-full"
+              >
+                Send Another Link
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -46,23 +81,21 @@ export default function SimpleAuth() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
-            <svg className="w-8 h-8 text-orange-600" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-            </svg>
+            🏀
           </div>
           <div>
             <CardTitle className="text-2xl font-bold">Basketball Court Tracker</CardTitle>
             <CardDescription className="text-gray-600">
-              Enter your Zoho email to access the court booking system
+              Enter your Zoho email to receive a sign-in link
             </CardDescription>
           </div>
         </CardHeader>
 
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleSendLink} className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Zoho Email
+                Zoho Email Address
               </label>
               <input
                 id="email"
@@ -70,36 +103,6 @@ export default function SimpleAuth() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your.name@zohocorp.com"
-                className="w-full h-12 px-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                required
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Your password"
-                className="w-full h-12 px-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                required
-              />
-            </div>
-
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                Your Name
-              </label>
-              <input
-                id="name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your full name"
                 className="w-full h-12 px-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 required
               />
@@ -115,16 +118,16 @@ export default function SimpleAuth() {
               {loading ? (
                 <div className="flex items-center space-x-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Signing in...</span>
+                  <span>Sending Link...</span>
                 </div>
               ) : (
-                'Sign In'
+                'Send Magic Link'
               )}
             </Button>
           </form>
 
           <div className="text-center text-xs text-gray-500 mt-4">
-            Only @zohocorp.com and @zoho.com emails are allowed
+            Only @zohocorp.com and @zoho.com emails are accepted
           </div>
         </CardContent>
       </Card>
