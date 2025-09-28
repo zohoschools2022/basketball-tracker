@@ -1,24 +1,48 @@
 'use client'
 
-import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
+interface SessionData {
+  user: {
+    id: string
+    email: string
+    name: string
+    isAdmin: boolean
+  }
+}
+
 export default function Dashboard() {
-  const { data: session, status } = useSession()
   const router = useRouter()
+  const [session, setSession] = useState<SessionData | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (status === 'loading') return // Still loading
-
-    if (!session) {
-      router.push('/auth/signin')
+    const sessionData = localStorage.getItem('basketball_session')
+    
+    if (sessionData) {
+      try {
+        const parsed = JSON.parse(sessionData)
+        setSession(parsed)
+      } catch {
+        localStorage.removeItem('basketball_session')
+        router.push('/auth/simple')
+      }
+    } else {
+      router.push('/auth/simple')
     }
-  }, [session, status, router])
+    
+    setLoading(false)
+  }, [router])
 
-  if (status === 'loading') {
+  const handleSignOut = () => {
+    localStorage.removeItem('basketball_session')
+    router.push('/auth/simple')
+  }
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-gray-600 text-xl">Loading...</div>
@@ -41,7 +65,7 @@ export default function Dashboard() {
           </div>
           <Button 
             variant="outline" 
-            onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+            onClick={handleSignOut}
           >
             Sign Out
           </Button>
@@ -65,7 +89,7 @@ export default function Dashboard() {
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <h3 className="font-medium text-green-800">✅ Authentication Success</h3>
                 <p className="text-green-600 text-sm mt-1">
-                  Logged in as: {session.user?.email}
+                  Logged in as: {session.user.email}
                 </p>
               </div>
               
