@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Check, X, Loader } from 'lucide-react'
 
-export default function VerifyMagicLink() {
+function VerifyContent() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [error, setError] = useState('')
   const [userInfo, setUserInfo] = useState<any>(null)
@@ -112,5 +112,17 @@ export default function VerifyMagicLink() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function VerifyMagicLink() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
+    }>
+      <VerifyContent />
+    </Suspense>
   )
 }
