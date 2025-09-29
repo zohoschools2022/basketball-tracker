@@ -27,7 +27,7 @@ export default function VerifyMagicLink() {
 
   const verifyToken = async (token: string) => {
     try {
-      const response = await fetch('/api/auth/verify-magic-link', {
+      const response = await fetch('/api/magic/verify-magic-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),
