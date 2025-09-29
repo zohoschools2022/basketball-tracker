@@ -1,124 +1,71 @@
+import jwt from 'jsonwebtoken'
 import { prisma } from './prisma'
-import nodemailer from 'nodemailer'
 
-// Create email transporter
-const transporter = nodemailer.createTransporter({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-})
+const JWT_SECRET = process.env.JWT_SECRET || 'basketball-court-tracker-secret-key'
+const AUTHORIZED_DOMAINS = ['@zohocorp.com', '@zoho.com']
 
-export async function sendMagicLink(email: string) {
+export function isAuthorizedEmail(email: string): boolean {
+  return AUTHORIZED_DOMAINS.some(domain => email.toLowerCase().endsWith(domain))
+}
+
+export function generateMagicToken(email: string): string {
+  return jwt.sign(
+    { 
+      email, 
+      purpose: 'magic-link',
+      timestamp: Date.now() 
+    },
+    JWT_SECRET,
+    { expiresIn: '15m' } // Token expires in 15 minutes
+  )
+}
+
+export function verifyMagicToken(token: string): { email: string } | null {
   try {
-    // Validate Zoho email
-    if (!email.includes('@zohocorp.com') && !email.includes('@zoho.com')) {
-      throw new Error('Only Zoho emails are allowed')
+    const decoded = jwt.verify(token, JWT_SECRET) as any
+    if (decoded.purpose === 'magic-link' && decoded.email) {
+      return { email: decoded.email }
     }
-
-    // Generate magic token
-    const token = generateSecureToken()
-    const expires = new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
-
-    // Store token in database
-    await prisma.verificationToken.create({
-      data: {
-        identifier: email,
-        token: token,
-        expires: expires,
-      },
-    })
-
-    // Create magic link
-    const magicLink = `${process.env.NEXTAUTH_URL || 'https://basketball-tracker-production.up.railway.app'}/auth/verify?token=${token}&email=${encodeURIComponent(email)}`
-
-    // Send email
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || 'Basketball Tracker <noreply@basketball-tracker.com>',
-      to: email,
-      subject: '🏀 Basketball Court Tracker - Sign In Link',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #ea580c;">🏀 Basketball Court Tracker</h2>
-          <p>Hi there!</p>
-          <p>Click the link below to sign in to your basketball court booking account:</p>
-          <p style="margin: 30px 0;">
-            <a href="${magicLink}" 
-               style="background: #ea580c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
-              Sign In to Basketball Tracker
-            </a>
-          </p>
-          <p style="color: #666; font-size: 14px;">
-            This link will expire in 15 minutes for security.<br/>
-            If you didn't request this, you can safely ignore this email.
-          </p>
-        </div>
-      `,
-    })
-
-    return { success: true }
-  } catch (error) {
-    console.error('Magic link error:', error)
-    throw error
+    return null
+  } catch {
+    return null
   }
 }
 
-export async function verifyMagicLink(token: string, email: string) {
+export function generateSessionToken(userId: string): string {
+  return jwt.sign(
+    { 
+      userId,
+      purpose: 'session',
+      timestamp: Date.now() 
+    },
+    JWT_SECRET,
+    { expiresIn: '30d' } // Session expires in 30 days
+  )
+}
+
+export function verifySessionToken(token: string): { userId: string } | null {
   try {
-    // Find valid token
-    const verificationToken = await prisma.verificationToken.findFirst({
-      where: {
-        identifier: email,
-        token: token,
-        expires: {
-          gt: new Date(), // Not expired
-        },
-      },
-    })
-
-    if (!verificationToken) {
-      throw new Error('Invalid or expired token')
+    const decoded = jwt.verify(token, JWT_SECRET) as any
+    if (decoded.purpose === 'session' && decoded.userId) {
+      return { userId: decoded.userId }
     }
-
-    // Delete used token
-    await prisma.verificationToken.delete({
-      where: {
-        identifier_token: {
-          identifier: email,
-          token: token,
-        },
-      },
-    })
-
-    // Create or update user
-    const user = await prisma.user.upsert({
-      where: { email },
-      update: { 
-        updatedAt: new Date(),
-        isActive: true,
-      },
-      create: {
-        email,
-        name: email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        isActive: true,
-      },
-    })
-
-    return { success: true, user }
-  } catch (error) {
-    console.error('Verification error:', error)
-    throw error
+    return null
+  } catch {
+    return null
   }
 }
 
-function generateSecureToken(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-  let result = ''
-  for (let i = 0; i < 32; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return result
+export async function createOrUpdateUser(email: string, name?: string) {
+  return await prisma.user.upsert({
+    where: { email },
+    update: { 
+      name: name || undefined,
+      updatedAt: new Date()
+    },
+    create: {
+      email,
+      name: name || email.split('@')[0], // Use email prefix as default name
+    }
+  })
 }
