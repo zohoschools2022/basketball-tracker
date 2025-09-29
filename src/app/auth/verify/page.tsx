@@ -43,7 +43,8 @@ function VerifyContent() {
         localStorage.setItem('basketball_session', JSON.stringify({
           user: data.user,
           sessionToken: data.sessionToken,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          expiresAt: Date.now() + (30 * 24 * 60 * 60 * 1000) // 30 days from now
         }))
 
         // Redirect to dashboard after 2 seconds
